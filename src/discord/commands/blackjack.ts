@@ -284,6 +284,7 @@ export const components: ComponentHandler[] = [
           clearTimer(handId);
           const fin: BjOutcome = { hand: current, finished: true, net: current.payout - finishedStake(current), canDouble: false, handsLeft: handsLeftToday(ctx, current.userId), autoStand: false, notices: [] };
           await i.editReply(await tablePayload(fin, i.user.displayName));
+          return;
         }
         await replyEphemeral(i, err.message);
         return;

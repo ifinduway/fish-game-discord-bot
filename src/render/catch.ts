@@ -7,7 +7,9 @@ import {
   drawCoinIcon,
   drawFishIcon,
   drawPanel,
+  drawPinIcon,
   drawRarityBorder,
+  drawStarRow,
   drawTitle,
   fmtInt,
   fmtWeight,
@@ -16,7 +18,7 @@ import {
   rarityColor,
   rarityName,
   roundRect,
-  stars,
+  stripEmoji,
   truncateToWidth,
   watermark,
   withGlow,
@@ -66,8 +68,7 @@ export async function renderCatchCardImpl(d: CatchCardData): Promise<Buffer> {
     drawFishIcon(g, W / 2, centerY, 150, accent);
   });
 
-  g.textAlign = 'center';
-  drawTitle(g, d.species.emoji ? `${d.species.emoji} ${d.species.name}` : d.species.name, W / 2, centerY + 110, 34);
+  drawTitle(g, d.species.name, W / 2, centerY + 110, 34, PALETTE.textPrimary, 'center');
   g.textAlign = 'center';
 
   // rarity badge
@@ -94,35 +95,38 @@ export async function renderCatchCardImpl(d: CatchCardData): Promise<Buffer> {
   // ---- stat strip ----
   const statsY = H - 108;
   const statW = (W - pad * 2 - 18) / 3;
-  const stats: { label: string; value: string; draw?: (x: number, y: number) => void }[] = [
-    { label: 'Вес', value: fmtWeight(d.weight) },
-    { label: 'Качество', value: `${stars(d.quality)}` },
-    { label: 'Стоимость', value: fmtInt(d.value), draw: (x, y) => drawCoinIcon(g, x, y, 13) },
-  ];
-  stats.forEach((s, i) => {
+  const columns = ['Вес', 'Качество', 'Стоимость'] as const;
+  columns.forEach((label, i) => {
     const x = pad + i * (statW + 9);
     drawPanel(g, x, statsY, statW, 78, 14);
     g.fillStyle = PALETTE.textSecondary;
     g.font = font(13, 'regular');
     g.textAlign = 'center';
-    g.fillText(s.label, x + statW / 2, statsY + 24);
-    g.fillStyle = s.label === 'Качество' ? '#f5c542' : PALETTE.textPrimary;
-    g.font = font(s.label === 'Качество' ? 22 : 22, 'bold');
-    if (s.draw) {
-      const tw = g.measureText(s.value).width;
-      s.draw(x + statW / 2 - tw / 2 - 16, statsY + 47);
-      g.fillText(s.value, x + statW / 2 + 10, statsY + 54);
+    g.fillText(label, x + statW / 2, statsY + 24);
+
+    if (label === 'Вес') {
+      g.fillStyle = PALETTE.textPrimary;
+      g.font = font(22, 'bold');
+      g.fillText(fmtWeight(d.weight), x + statW / 2, statsY + 54);
+    } else if (label === 'Качество') {
+      drawStarRow(g, x + statW / 2, statsY + 48, d.quality, 5, 11);
     } else {
-      g.fillText(s.value, x + statW / 2, statsY + 54);
+      const value = fmtInt(d.value);
+      g.fillStyle = PALETTE.textPrimary;
+      g.font = font(22, 'bold');
+      const tw = g.measureText(value).width;
+      drawCoinIcon(g, x + statW / 2 - tw / 2 - 16, statsY + 47, 13);
+      g.fillText(value, x + statW / 2 + 10, statsY + 54);
     }
   });
   g.textAlign = 'left';
 
   // location footer
+  drawPinIcon(g, pad + 6, H - 24, 13, PALETTE.textMuted);
   g.fillStyle = PALETTE.textMuted;
   g.font = font(13, 'regular');
   g.textAlign = 'left';
-  g.fillText(`📍 ${d.location}`, pad, H - 20);
+  g.fillText(stripEmoji(d.location), pad + 18, H - 20);
 
   watermark(g, W, H);
   return canvas.encode('png');

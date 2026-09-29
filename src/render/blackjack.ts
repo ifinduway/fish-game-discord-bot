@@ -1,7 +1,7 @@
 // Blackjack card (§4.6 renderBlackjackCard). 900×520, green felt table.
 import { createCanvas } from '@napi-rs/canvas';
 import type { BlackjackCardData } from './types.js';
-import { drawCardBack, drawPlayingCard, drawTitle, font, PALETTE, roundRect, roundRectPath, truncateToWidth, watermark } from './common.js';
+import { drawCardBack, drawCoinIcon, drawPlayingCard, drawTitle, font, PALETTE, roundRect, roundRectPath, stripEmoji, truncateToWidth, watermark } from './common.js';
 
 const W = 900;
 const H = 520;
@@ -98,22 +98,32 @@ export async function renderBlackjackCardImpl(d: BlackjackCardData): Promise<Buf
     const c = d.player.cards[i]!;
     drawPlayingCard(g, pad + x, playerCardsY, CARD_W, CARD_H, c.rank, c.suit);
   });
-  g.fillStyle = 'rgba(255,255,255,0.9)';
+  // "Игрок[: username]" label above the player's hand mirrors the "Дилер" label above the dealer's hand.
+  g.font = font(20, 'bold');
+  const who = d.username ? `Игрок: ${truncateToWidth(g, d.username, 220)}` : 'Игрок';
+  drawTitle(g, who, pad, playerCardsY - 12, 20, 'rgba(255,255,255,0.9)');
   g.font = font(18, 'bold');
-  g.fillText(`Счёт: ${d.player.total}`, pad, playerCardsY - 12);
-  g.font = font(16, 'regular');
-  g.fillStyle = 'rgba(255,255,255,0.7)';
+  g.fillStyle = 'rgba(255,255,255,0.9)';
   g.textAlign = 'left';
-  const who = d.username ? `Игрок: ${d.username}` : 'Игрок';
-  g.fillText(truncateToWidth(g, who, 260), pad, H - 20);
+  g.fillText(`Счёт: ${d.player.total}`, pad, H - 20);
 
-  // stake / payout footer (right)
+  // stake / payout footer (right, kept clear of the bottom-right watermark)
   g.textAlign = 'right';
   g.fillStyle = 'rgba(255,255,255,0.85)';
   g.font = font(16, 'bold');
-  g.fillText(`Ставка: ${d.stakeLabel}`, W - pad, H - 40);
-  g.fillStyle = d.payout > 0 ? '#7be08a' : 'rgba(255,255,255,0.6)';
-  g.fillText(d.payout > 0 ? `Выплата: 🪙 ${d.payout}` : 'Без выплаты', W - pad, H - 20);
+  g.fillText(`Ставка: ${stripEmoji(d.stakeLabel)}`, W - pad, H - 62);
+  if (d.payout > 0) {
+    const label = `Выплата: ${d.payout}`;
+    const labelW = g.measureText(label).width;
+    const textRightX = W - pad;
+    const textLeftX = textRightX - labelW;
+    g.fillStyle = '#7be08a';
+    g.fillText(label, textRightX, H - 40);
+    drawCoinIcon(g, textLeftX - 16, H - 45, 11);
+  } else {
+    g.fillStyle = 'rgba(255,255,255,0.6)';
+    g.fillText('Без выплаты', W - pad, H - 40);
+  }
   g.textAlign = 'left';
 
   watermark(g, W, H);

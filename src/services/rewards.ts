@@ -6,6 +6,7 @@ import { COSMETIC_BY_ID } from '../data/cosmetics.js';
 import { GEAR_BY_ID } from '../data/gear.js';
 import type { Reward } from '../data/types.js';
 import { addConsumable, addCosmetic, addGearItem, hasGear } from '../db/repos/inventory.js';
+import { incPearlsEarned } from '../db/repos/stats.js';
 import { addCoins, addPearls } from '../db/repos/wallet.js';
 import { addXp, getOrCreatePlayer } from './player.js';
 
@@ -30,7 +31,7 @@ export interface GrantResult {
 /**
  * Grants a reward bundle atomically (opens a transaction, or a savepoint when already inside one).
  * Unknown item/gear/cosmetic ids throw (whole grant rolls back). Duplicate gear → coins (BALANCE.gearDuplicateCoins[tier]);
- * duplicate cosmetics are ignored. Does NOT update stats counters.
+ * duplicate cosmetics are ignored. Does NOT update stats counters, except `pearls_earned` (pearls have no event of their own).
  */
 export function grantReward(ctx: GameContext, userId: string, reward: Reward, source: string): GrantResult {
   return ctx.db.transaction((): GrantResult => {
@@ -56,7 +57,10 @@ export function grantReward(ctx: GameContext, userId: string, reward: Reward, so
 
     const pearls = Math.max(0, Math.floor(reward.pearls ?? 0));
     if (coins > 0) addCoins(ctx, userId, coins);
-    if (pearls > 0) addPearls(ctx, userId, pearls);
+    if (pearls > 0) {
+      addPearls(ctx, userId, pearls);
+      incPearlsEarned(ctx, userId, pearls);
+    }
     if ((reward.coins ?? 0) > 0) parts.push(`🪙 ${Math.floor(reward.coins!)}`);
     if (pearls > 0) parts.push(`🐚 ${pearls}`);
 

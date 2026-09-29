@@ -11,6 +11,7 @@ import type { FishSpecies, JunkItem, LocationDef, LocationId, SeasonThemeId } fr
 import { prepare, type DbCtx } from '../db/database.js';
 import { addCaughtFish, clearActiveBait, countCaughtFish, setActiveBait } from '../db/repos/inventory.js';
 import { getPlayer, requirePlayer, setEnergy, updatePlayer } from '../db/repos/players.js';
+import { incPearlsEarned } from '../db/repos/stats.js';
 import { addCoins, addPearls } from '../db/repos/wallet.js';
 import { catchXp, effectiveJunkChance, finalQuality, perfectWeight, rollCast, rollQuality, type CastRoll } from '../game/catch.js';
 import { applyRefund, currentEnergy, energyParams, escapeRefund, msUntil } from '../game/energy.js';
@@ -447,7 +448,10 @@ function completeCatch(ctx: GameContext, s: FishingSession, mistakes: number): F
     const firstOfSpecies = recordCollection(ctx, s.userId, species.id, weight, quality, now);
     const record = updateSpeciesRecord(ctx, species.id, s.userId, weight, now);
     const pearls = firstOfSpecies ? BALANCE.firstCatchPearls[species.rarity] : 0;
-    if (pearls > 0) addPearls(ctx, s.userId, pearls);
+    if (pearls > 0) {
+      addPearls(ctx, s.userId, pearls);
+      incPearlsEarned(ctx, s.userId, pearls);
+    }
     notices.push(...addXp(ctx, s.userId, xp).notices);
     return { fishId, firstOfSpecies, record, pearls };
   })();

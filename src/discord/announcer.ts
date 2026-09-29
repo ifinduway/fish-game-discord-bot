@@ -19,6 +19,6 @@ export function createAnnouncer(client: Client, ctx: GameContext): (payload: Ann
       files.push(new AttachmentBuilder(payload.file.data, { name: payload.file.name }));
       embed.setImage(`attachment://${payload.file.name}`);
     }
-    await channel.send({ content: payload.content, embeds: [embed], files });
+    await channel.send({ content: payload.content, embeds: [embed], files, allowedMentions: { parse: [] } });
   };
 }

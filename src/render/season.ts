@@ -1,7 +1,7 @@
 // Season summary card (§4.6 renderSeasonSummaryCard). 1000×dynamic.
 import { createCanvas } from '@napi-rs/canvas';
 import type { SeasonSummaryData } from './types.js';
-import { drawCardBackground, drawPanel, drawTitle, font, PALETTE, truncateToWidth, watermark } from './common.js';
+import { drawCardBackground, drawPanel, drawTitle, drawTrophyIcon, font, PALETTE, truncateToWidth, watermark, withGlow } from './common.js';
 
 const W = 1000;
 const HEADER_H = 116;
@@ -11,7 +11,7 @@ const FOOTER_H = 36;
 const GAP = 20;
 const COLS = 2;
 
-const MEDAL = ['🥇', '🥈', '🥉'];
+const MEDAL_COLORS = ['#f4d160', '#c9d3dc', '#d3925a'];
 
 export async function renderSeasonSummaryCardImpl(d: SeasonSummaryData): Promise<Buffer> {
   const cats = d.categories.slice(0, 8);
@@ -32,10 +32,13 @@ export async function renderSeasonSummaryCardImpl(d: SeasonSummaryData): Promise
   drawCardBackground(g, W, H, 24, { colors: d.colors, seed: 13 });
 
   const pad = 32;
-  drawTitle(g, `${d.emoji ?? '🏁'} ${d.seasonName}`, pad, 58, 32);
+  withGlow(g, 'rgba(244, 209, 96, 0.5)', 14, () => {
+    drawTrophyIcon(g, pad + 18, 44, 32, PALETTE.gold);
+  });
+  drawTitle(g, d.seasonName, pad + 44, 58, 32);
   g.fillStyle = PALETTE.textSecondary;
   g.font = font(15, 'regular');
-  g.fillText('Итоги сезона', pad, 86);
+  g.fillText('Итоги сезона', pad + 44, 86);
 
   const colW = (W - pad * 2 - GAP * (colCount - 1)) / colCount;
   const colY: number[] = new Array(colCount).fill(HEADER_H);
@@ -55,10 +58,27 @@ export async function renderSeasonSummaryCardImpl(d: SeasonSummaryData): Promise
 
     winners.forEach((w, wi) => {
       const wy = y + CAT_HEADER_H + wi * WINNER_ROW_H + 26;
+      const medalColor = MEDAL_COLORS[wi];
+      if (medalColor) {
+        g.fillStyle = medalColor;
+        g.beginPath();
+        g.arc(x + 24, wy - 5, 9, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = '#1c1c1c';
+        g.font = font(11, 'bold');
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(String(wi + 1), x + 24, wy - 4);
+        g.textBaseline = 'alphabetic';
+        g.textAlign = 'left';
+      } else {
+        g.fillStyle = PALETTE.textMuted;
+        g.font = font(12, 'regular');
+        g.fillText(`${wi + 1}.`, x + 16, wy);
+      }
       g.fillStyle = wi < 3 ? PALETTE.textPrimary : PALETTE.textSecondary;
       g.font = font(14, wi === 0 ? 'bold' : 'regular');
-      const medal = MEDAL[wi] ?? `${wi + 1}.`;
-      g.fillText(`${medal} ${truncateToWidth(g, w.username, colW - 140)}`, x + 16, wy);
+      g.fillText(truncateToWidth(g, w.username, colW - 156), x + 40, wy);
       g.textAlign = 'right';
       g.fillStyle = wi === 0 ? PALETTE.gold : PALETTE.textSecondary;
       g.fillText(w.value, x + colW - 16, wy);

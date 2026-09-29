@@ -1,8 +1,12 @@
 node_modules/
-# dist/
-# data/*.db
-# data/*.db-*
-# .env
-# samples/
-# *.log
-# coverage/
+dist/
+data/
+.env
+samples/
+*.log
+coverage/
+
+# oh-my-claudecode tool state (keep only the spec and plan)
+.omc/*
+!.omc/specs/
+!.omc/plans/

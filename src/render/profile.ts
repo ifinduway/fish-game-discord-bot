@@ -157,24 +157,37 @@ export async function renderProfileCardImpl(d: ProfileCardData): Promise<Buffer>
   g.fillText('Снаряжение', pad + 18, contentTop + 28);
 
   const gearRows = d.gear.slice(0, 4);
-  const rowH = Math.min(52, (lowerH - 44) / Math.max(1, gearRows.length));
+  // Reserve a small bottom safety margin (headerH + margin) so the last row's text descenders never
+  // touch the panel's rounded bottom edge, regardless of row count.
+  const gearHeaderH = 44;
+  const gearBottomMargin = 10;
+  const rowH = Math.min(52, (lowerH - gearHeaderH - gearBottomMargin) / Math.max(1, gearRows.length));
   const slotNames: Record<string, string> = { rod: 'Удочка', reel: 'Катушка', line: 'Леска', outfit: 'Костюм' };
   gearRows.forEach((item, i) => {
-    const ry = contentTop + 44 + i * rowH;
+    const ry = contentTop + gearHeaderH + i * rowH;
+    const rowCenter = ry + rowH / 2;
     const color = rarityColor(item.tier);
     g.fillStyle = color;
-    roundRect(g, pad + 18, ry + 6, 6, rowH - 18, 3);
+    roundRect(g, pad + 18, ry + 4, 6, rowH - 10, 3);
+
+    // slot caption (small, above)
     g.fillStyle = PALETTE.textSecondary;
-    g.font = font(12, 'regular');
-    g.fillText(slotNames[item.slot] ?? item.slot, pad + 34, ry + 16);
+    g.font = font(11, 'regular');
+    g.textAlign = 'left';
+    g.fillText(slotNames[item.slot] ?? item.slot, pad + 34, rowCenter - 8);
+
+    // item name + rarity label share the same baseline below the caption
+    const nameBaseline = rowCenter + 13;
     g.fillStyle = PALETTE.textPrimary;
-    g.font = font(16, 'bold');
-    const nameText = truncateToWidth(g, `${item.name}${item.upgrade > 0 ? ` +${item.upgrade}` : ''}`, leftW - 70);
-    g.fillText(nameText, pad + 34, ry + 38);
+    g.font = font(15, 'bold');
+    g.textAlign = 'left';
+    const nameText = truncateToWidth(g, `${item.name}${item.upgrade > 0 ? ` +${item.upgrade}` : ''}`, leftW - 130);
+    g.fillText(nameText, pad + 34, nameBaseline);
+
     g.fillStyle = color;
     g.font = font(12, 'bold');
     g.textAlign = 'right';
-    g.fillText(RARITY_INFO[item.tier].name, pad + leftW - 18, ry + 26);
+    g.fillText(RARITY_INFO[item.tier].name, pad + leftW - 18, nameBaseline);
     g.textAlign = 'left';
   });
   if (gearRows.length === 0) {

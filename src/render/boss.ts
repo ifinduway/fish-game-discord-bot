@@ -1,7 +1,7 @@
 // Boss card (§4.6 renderBossCard). 1000×500.
 import { createCanvas } from '@napi-rs/canvas';
 import type { BossCardData } from './types.js';
-import { drawCardBackground, drawPanel, drawProgressBar, drawTitle, fmtInt, font, PALETTE, roundRect, truncateToWidth, watermark, withGlow, type Ctx } from './common.js';
+import { drawCardBackground, drawPanel, drawPinIcon, drawProgressBar, drawTitle, fmtDuration, fmtInt, font, PALETTE, roundRect, stripEmoji, truncateToWidth, watermark, withGlow, type Ctx } from './common.js';
 
 const W = 1000;
 const H = 500;
@@ -30,10 +30,11 @@ export async function renderBossCardImpl(d: BossCardData): Promise<Buffer> {
   });
   drawBossSilhouette(g, W - 190, 150, 150);
 
-  drawTitle(g, `${d.emoji ?? '🐙'} ${d.name}`, pad, 66, 34);
+  drawTitle(g, d.name, pad, 66, 34);
+  drawPinIcon(g, pad + 6, 89, 14, PALETTE.textSecondary);
   g.fillStyle = PALETTE.textSecondary;
   g.font = font(16, 'regular');
-  g.fillText(`📍 ${d.location}`, pad, 94);
+  g.fillText(stripEmoji(d.location), pad + 18, 94);
 
   const statusColor = status === 'active' ? '#ff8c1a' : status === 'defeated' ? '#4caf50' : '#9e9e9e';
   g.font = font(13, 'bold');
@@ -58,10 +59,12 @@ export async function renderBossCardImpl(d: BossCardData): Promise<Buffer> {
   drawProgressBar(g, pad, barY, barW, 22, d.maxHp > 0 ? d.hp / d.maxHp : 0, PALETTE.bossHp);
 
   if (status === 'active') {
+    const remainingMs = d.expiresAt - Date.now();
+    const timeText = remainingMs > 0 ? `Осталось ${fmtDuration(remainingMs)}` : 'Истекает…';
     g.fillStyle = PALETTE.textMuted;
     g.font = font(13, 'regular');
     g.textAlign = 'right';
-    g.fillText(`Истекает <t:${Math.floor(d.expiresAt / 1000)}:R>`, pad + barW, barY + 42);
+    g.fillText(timeText, pad + barW, barY + 42);
     g.textAlign = 'left';
   }
 

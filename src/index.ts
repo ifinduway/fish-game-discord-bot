@@ -29,18 +29,25 @@ async function main(): Promise<void> {
   const jobs = await loadJobs();
   let scheduler: SchedulerHandle | null = null;
 
+  const register = async (clientId: string, guildId: string): Promise<void> => {
+    try {
+      const n = await registerGuildCommands(env.DISCORD_TOKEN!, clientId, guildId, registry);
+      console.log(`[boot] registered ${n} slash commands in guild ${guildId}`);
+    } catch (err) {
+      console.error(`[boot] failed to register slash commands in guild ${guildId}:`, err);
+    }
+  };
+
   client.once(Events.ClientReady, async (c) => {
     console.log(`[boot] logged in as ${c.user.tag}`);
     const clientId = env.CLIENT_ID ?? c.application.id;
     if (env.GUILD_ID) {
-      try {
-        const n = await registerGuildCommands(env.DISCORD_TOKEN!, clientId, env.GUILD_ID, registry);
-        console.log(`[boot] registered ${n} slash commands in guild ${env.GUILD_ID}`);
-      } catch (err) {
-        console.error('[boot] failed to register slash commands:', err);
-      }
+      await register(clientId, env.GUILD_ID);
     } else {
-      console.warn('[boot] GUILD_ID не задан — slash-команды не зарегистрированы (yarn deploy)');
+      // No GUILD_ID: register on every guild the bot is in, and on guilds it joins later.
+      console.warn(`[boot] GUILD_ID не задан — регистрирую команды на всех серверах бота (${c.guilds.cache.size})`);
+      for (const guildId of c.guilds.cache.keys()) await register(clientId, guildId);
+      client.on(Events.GuildCreate, (guild) => void register(clientId, guild.id));
     }
     scheduler = startScheduler(ctx, jobs);
     console.log(`[boot] scheduler started with ${jobs.length} jobs`);

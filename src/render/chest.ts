@@ -5,7 +5,10 @@ import {
   drawCardBackground,
   drawChestIcon,
   drawCoinIcon,
+  drawDiamondIcon,
+  drawGearIcon,
   drawPanel,
+  drawSparkleIcon,
   drawTitle,
   font,
   PALETTE,
@@ -46,7 +49,7 @@ export async function renderChestCardImpl(d: ChestCardData): Promise<Buffer> {
   withGlow(g, accent, 30, () => {
     drawChestIcon(g, pad + 40, HEADER_H / 2, 68, '#c9973f');
   });
-  drawTitle(g, `${d.chest.emoji ?? '🎁'} ${d.chest.name}`.trim(), pad + 92, HEADER_H / 2 - 4, 30);
+  drawTitle(g, d.chest.name, pad + 92, HEADER_H / 2 - 4, 30);
   g.fillStyle = PALETTE.textSecondary;
   g.font = font(15, 'regular');
   g.fillText(`Открыто наград: ${rewards.length}`, pad + 92, HEADER_H / 2 + 24);
@@ -79,19 +82,18 @@ export async function renderChestCardImpl(d: ChestCardData): Promise<Buffer> {
     const iconCx = pad + 44;
     const iconCy = y + rowH / 2;
     withGlow(g, rowColor, 16, () => {
-      if (r.kind === 'coins') drawCoinIcon(g, iconCx, iconCy, 20);
-      else {
-        g.fillStyle = rowColor;
-        g.beginPath();
-        g.arc(iconCx, iconCy, 20, 0, Math.PI * 2);
-        g.fill();
-        g.fillStyle = '#0b1620';
-        g.font = font(16, 'bold');
-        g.textAlign = 'center';
-        g.textBaseline = 'middle';
-        g.fillText(kindGlyph(r.kind), iconCx, iconCy + 1);
-        g.textBaseline = 'alphabetic';
+      if (r.kind === 'coins') {
+        drawCoinIcon(g, iconCx, iconCy, 20);
+        return;
       }
+      g.fillStyle = rowColor;
+      g.beginPath();
+      g.arc(iconCx, iconCy, 20, 0, Math.PI * 2);
+      g.fill();
+      const glyphColor = '#0b1620';
+      if (r.kind === 'gear') drawGearIcon(g, iconCx, iconCy, 11, glyphColor);
+      else if (r.kind === 'cosmetic') drawSparkleIcon(g, iconCx, iconCy, 12, glyphColor);
+      else drawDiamondIcon(g, iconCx, iconCy, 10, glyphColor);
     });
 
     g.fillStyle = PALETTE.textPrimary;
@@ -101,7 +103,7 @@ export async function renderChestCardImpl(d: ChestCardData): Promise<Buffer> {
 
     g.fillStyle = PALETTE.textSecondary;
     g.font = font(13, 'regular');
-    const sub = `${KIND_LABEL[r.kind]}${r.duplicate ? ' · дубликат → монеты' : ''}`;
+    const sub = `${KIND_LABEL[r.kind]}${r.duplicate ? ' · дубликат: монеты' : ''}`;
     g.fillText(sub, pad + 84, y + rowH / 2 + 18);
 
     g.fillStyle = rowColor;
@@ -121,19 +123,6 @@ export async function renderChestCardImpl(d: ChestCardData): Promise<Buffer> {
 
   watermark(g, W, H);
   return canvas.encode('png');
-}
-
-function kindGlyph(kind: ChestRewardView['kind']): string {
-  switch (kind) {
-    case 'gear':
-      return '⚙';
-    case 'cosmetic':
-      return '✦';
-    case 'item':
-      return '◆';
-    default:
-      return '?';
-  }
 }
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];

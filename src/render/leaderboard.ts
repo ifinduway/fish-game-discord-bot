@@ -1,7 +1,7 @@
 // Leaderboard card (§4.6 renderLeaderboardCard). 900×(header + up to 10 rows).
 import { createCanvas } from '@napi-rs/canvas';
 import type { LeaderboardCardData } from './types.js';
-import { drawAvatar, drawCardBackground, drawPanel, drawTitle, font, PALETTE, roundRectPath, truncateToWidth, watermark } from './common.js';
+import { drawAvatar, drawCardBackground, drawPanel, drawTitle, drawTrophyIcon, font, PALETTE, roundRectPath, truncateToWidth, watermark, withGlow } from './common.js';
 
 const W = 900;
 const HEADER_H = 108;
@@ -19,11 +19,14 @@ export async function renderLeaderboardCardImpl(d: LeaderboardCardData): Promise
   drawCardBackground(g, W, H, 24, { colors: [PALETTE.bgDeepNavy, PALETTE.bgTeal], seed: 2 });
 
   const pad = 32;
-  drawTitle(g, `🏆 ${d.title}`, pad, 52, 30);
+  withGlow(g, 'rgba(244, 209, 96, 0.55)', 16, () => {
+    drawTrophyIcon(g, pad + 20, 40, 34, PALETTE.gold);
+  });
+  drawTitle(g, d.title, pad + 46, 52, 30);
   if (d.subtitle) {
     g.fillStyle = PALETTE.textSecondary;
     g.font = font(15, 'regular');
-    g.fillText(d.subtitle, pad, 78);
+    g.fillText(d.subtitle, pad + 46, 78);
   }
 
   for (let i = 0; i < rows.length; i++) {

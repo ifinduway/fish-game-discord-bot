@@ -47,6 +47,30 @@ export function fmtDec(n: number): string {
 export function fmtWeight(kg: number): string {
   return `${fmtDec(kg)} кг`;
 }
+
+/** Russian compact duration: "2 д 3 ч", "5 ч 12 мин", "4 мин 10 с", "45 с". Renderers must never bake Discord
+ * timestamp markup (`<t:…:R>`) into a canvas card — it only resolves inside real Discord message content. */
+export function fmtDuration(ms: number): string {
+  let s = Math.max(0, Math.ceil(ms / 1000));
+  const d = Math.floor(s / 86400);
+  s -= d * 86400;
+  const h = Math.floor(s / 3600);
+  s -= h * 3600;
+  const m = Math.floor(s / 60);
+  s -= m * 60;
+  if (d > 0) return h > 0 ? `${d} д ${h} ч` : `${d} д`;
+  if (h > 0) return m > 0 ? `${h} ч ${m} мин` : `${h} ч`;
+  if (m > 0) return s > 0 ? `${m} мин ${s} с` : `${m} мин`;
+  return `${s} с`;
+}
+
+// eslint-disable-next-line no-misleading-character-class
+const EMOJI_RE = /[\u{1F1E6}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️]/gu;
+/** Strips color emoji from externally-supplied strings (e.g. stakeLabel) — canvas cannot render them reliably;
+ * vector icons (drawCoinIcon, drawFishIcon, …) are drawn separately where the meaning is known. */
+export function stripEmoji(text: string): string {
+  return text.replace(EMOJI_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
 export function stars(quality: number, max = 5): string {
   const q = Math.max(0, Math.min(max, Math.round(quality)));
   return '★'.repeat(q) + '☆'.repeat(max - q);
@@ -352,7 +376,7 @@ export function drawPearlIcon(g: Ctx, cx: number, cy: number, r: number): void {
 }
 
 /** Small rotated-square "gem" icon, used for generic items. */
-export function drawDiamondIcon(g: Ctx, cx: number, cy: number, r: number, color = '#5ec8ff'): void {
+export function drawDiamondIcon(g: Ctx, cx: number, cy: number, r: number, color: string = '#5ec8ff'): void {
   g.save();
   g.translate(cx, cy);
   g.rotate(Math.PI / 4);
@@ -362,7 +386,7 @@ export function drawDiamondIcon(g: Ctx, cx: number, cy: number, r: number, color
 }
 
 /** Four-point sparkle icon, used for cosmetics. */
-export function drawSparkleIcon(g: Ctx, cx: number, cy: number, r: number, color = '#e0a8ff'): void {
+export function drawSparkleIcon(g: Ctx, cx: number, cy: number, r: number, color: string = '#e0a8ff'): void {
   g.save();
   g.translate(cx, cy);
   g.fillStyle = color;
@@ -378,7 +402,7 @@ export function drawSparkleIcon(g: Ctx, cx: number, cy: number, r: number, color
 }
 
 /** Simple cog icon, used for gear rewards. */
-export function drawGearIcon(g: Ctx, cx: number, cy: number, r: number, color = '#9ab8c8'): void {
+export function drawGearIcon(g: Ctx, cx: number, cy: number, r: number, color: string = '#9ab8c8'): void {
   g.save();
   g.translate(cx, cy);
   g.fillStyle = color;
@@ -400,7 +424,7 @@ export function drawGearIcon(g: Ctx, cx: number, cy: number, r: number, color = 
 }
 
 /** Location pin icon (map marker teardrop). */
-export function drawPinIcon(g: Ctx, cx: number, cy: number, size: number, color = PALETTE.textSecondary): void {
+export function drawPinIcon(g: Ctx, cx: number, cy: number, size: number, color: string = PALETTE.textSecondary): void {
   const s = size;
   g.save();
   g.translate(cx, cy - s * 0.5);
@@ -419,7 +443,7 @@ export function drawPinIcon(g: Ctx, cx: number, cy: number, size: number, color 
 }
 
 /** Small trophy icon (cup + stem + base). */
-export function drawTrophyIcon(g: Ctx, cx: number, cy: number, size: number, color = PALETTE.gold): void {
+export function drawTrophyIcon(g: Ctx, cx: number, cy: number, size: number, color: string = PALETTE.gold): void {
   const s = size;
   g.save();
   g.translate(cx - s * 0.5, cy - s * 0.5);
@@ -436,6 +460,49 @@ export function drawTrophyIcon(g: Ctx, cx: number, cy: number, size: number, col
   g.fillRect(s * 0.42, s * 0.5, s * 0.16, s * 0.22);
   roundRect(g, s * 0.28, s * 0.7, s * 0.44, s * 0.12, s * 0.04);
   g.restore();
+}
+
+function starPath(g: Ctx, cx: number, cy: number, outerR: number, innerR: number): void {
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) g.moveTo(x, y);
+    else g.lineTo(x, y);
+  }
+  g.closePath();
+}
+
+/** Single 5-point star (neither PT Sans nor generic sans-serif ship ★/☆ on all platforms). */
+export function drawStarIcon(g: Ctx, cx: number, cy: number, outerR: number, filled: boolean, color = PALETTE.energy): void {
+  g.save();
+  starPath(g, cx, cy, outerR, outerR * 0.42);
+  if (filled) {
+    g.fillStyle = color;
+    g.fill();
+  } else {
+    g.fillStyle = 'rgba(255,255,255,0.08)';
+    g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.35)';
+    g.lineWidth = Math.max(1, outerR * 0.14);
+    g.stroke();
+  }
+  g.restore();
+}
+
+/** Centered row of `max` stars, first `quality` filled. Returns the row's total width. */
+export function drawStarRow(g: Ctx, cx: number, cy: number, quality: number, max: number, outerR: number): number {
+  const diameter = outerR * 2;
+  const gap = outerR * 0.7;
+  const total = max * diameter + (max - 1) * gap;
+  const startCx = cx - total / 2 + outerR;
+  const q = Math.max(0, Math.min(max, Math.round(quality)));
+  for (let i = 0; i < max; i++) {
+    drawStarIcon(g, startCx + i * (diameter + gap), cy, outerR, i < q, PALETTE.energy);
+  }
+  return total;
 }
 
 /** Card-suit vector glyph (neither PT Sans nor generic sans-serif ship ♠♥♦♣ on all platforms). */
@@ -588,12 +655,13 @@ export function drawCardBack(g: Ctx, x: number, y: number, w: number, h: number)
 }
 
 // ---------- header/footer chrome ----------
-export function drawTitle(g: Ctx, text: string, x: number, y: number, size: number, color: string = PALETTE.textPrimary): void {
+export function drawTitle(g: Ctx, text: string, x: number, y: number, size: number, color: string = PALETTE.textPrimary, align: 'left' | 'center' | 'right' = 'left'): void {
   g.fillStyle = color;
   g.font = font(size, 'bold');
-  g.textAlign = 'left';
+  g.textAlign = align;
   g.textBaseline = 'alphabetic';
   g.fillText(text, x, y);
+  g.textAlign = 'left';
 }
 
 export function drawLabel(g: Ctx, text: string, x: number, y: number, size = 16, color: string = PALETTE.textSecondary): void {

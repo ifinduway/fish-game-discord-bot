@@ -95,3 +95,11 @@ export function rank(ctx: DbCtx, userId: string, metric: string, scope: string):
   ).get(scope, metric, v.value, v.value, userId) as { n: number };
   return r.n + 1;
 }
+
+/**
+ * `pearls_earned` (default scopes) for pearls credited outside the event-driven stats subscriber: grantReward,
+ * first-catch pearls, /daily. Treasure pearls are counted by the subscriber from `treasure_found`.
+ */
+export function incPearlsEarned(ctx: ScopeCtx, userId: string, pearls: number): void {
+  if (pearls > 0) inc(ctx, userId, 'pearls_earned', pearls);
+}

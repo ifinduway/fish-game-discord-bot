@@ -9,6 +9,7 @@ import type { ConsumableDef, Rarity } from '../data/types.js';
 import { prepare } from '../db/database.js';
 import { getActiveBait, getConsumableQty, removeConsumable, setActiveBait, type CaughtFishRow } from '../db/repos/inventory.js';
 import { requirePlayer, setEnergy, updatePlayer } from '../db/repos/players.js';
+import { incPearlsEarned } from '../db/repos/stats.js';
 import { addCoins, addPearls } from '../db/repos/wallet.js';
 import { dailyReward } from '../game/economy.js';
 import { applyDrink } from '../game/energy.js';
@@ -93,6 +94,7 @@ export function claimDaily(ctx: GameContext, userId: string, username?: string):
     if (!r.ok) return { ok: false as const, streak: p.daily_streak };
     updatePlayer(ctx, userId, { daily_streak: r.streak, last_daily_key: today });
     addPearls(ctx, userId, r.pearls);
+    incPearlsEarned(ctx, userId, r.pearls);
     return r;
   })();
   if (!res.ok) return { ok: false, reason: 'already_claimed', streak: res.streak, nextResetAt };
